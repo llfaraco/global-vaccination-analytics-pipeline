@@ -1,50 +1,46 @@
-# Vacinação global | Tratamento de dados e modelagem analítica
+# Vacinação | Tratamento temporal e carga SQLite
 
-**Projeto de estudo · Python · pandas · SQL · Séries temporais**
+**Python · pandas · SQL · Modelagem dimensional**
 
-## Pergunta analítica
+Como transformar registros por país e data em uma base analítica sem confundir ausência de reporte com zero?
 
-Como organizar registros diários de vacinação para comparar volumes e observar a evolução no tempo?
+## Implementação
 
-## Implementação disponível
+1. Valida colunas, chaves, datas e domínios das métricas.
+2. Rejeita duplicidades país/data.
+3. Ordena as observações e calcula média móvel de **sete dias corridos**, usando janela temporal.
+4. Preserva nulos de reporte; não os converte em zero.
+5. Carrega dimensão e fato em SQLite e reconcilia a quantidade de registros e as referências.
+6. Exporta CSV tratado, máximos acumulados por país e relatório de validação.
 
-- `01_etl_analise.py`: leitura do CSV, preenchimento de nulos em métricas, conversão de data, padronização de nomes e cálculo de média móvel de sete registros por país.
-- Geração de gráficos para os cinco maiores volumes acumulados e a série do Brasil.
-- Exportação do resultado para `data/tabela_limpa_vacinacao.csv`.
-- `02_modelagem_sql.sql`: dimensão de país, fato de vacinação diária e consulta de agregação.
-- `data/country_vaccinations.csv`: arquivo de entrada disponível no repositório.
+## Executar
 
-## Como executar a etapa Python
-
-Na raiz do projeto, em um ambiente Python:
+Ambiente de testes: Python 3.12.
 
 ```bash
-python -m venv .venv
-# Linux/macOS:
-source .venv/bin/activate
-# Windows PowerShell: .venv\Scripts\Activate.ps1
-python -m pip install pandas numpy matplotlib seaborn
+python -m pip install -r requirements.txt
+python -m unittest discover -s tests
 python 01_etl_analise.py
+# Outra entrada:
+python 01_etl_analise.py --input caminho/base.csv --output artifacts
 ```
 
-O script prevê a criação de `top5_vacinacao.png`, `tendencia_brasil.png` e do CSV tratado. A execução não foi validada nesta revisão documental.
+A entrada padrão continua sendo `data/country_vaccinations.csv`, já existente no repositório. As saídas ficam em `artifacts/`; o banco e o CSV tratado não são versionados.
 
-## Etapa SQL
+## O que foi validado
 
-O modelo é uma demonstração separada. O Python **não cria nem carrega automaticamente** as tabelas SQL. A definição usa `AUTO_INCREMENT`, próprio da família MySQL; precisa de adaptação para PostgreSQL.
+Quatro testes locais passaram com uma **fixture sintética de quatro registros e dois países**, criada apenas para testar o comportamento. Conferem ordenação, intervalo com lacunas, nulos, duplicidade, métrica negativa e persistência SQL.
 
-## Limitações analíticas
+**O CSV original de 17 MB não foi executado nesta revisão:** o conector não entregou seu conteúdo. Os testes controlados não substituem essa execução. Não se publicam números de países, doses ou desempenho como se tivessem sido calculados na base completa.
 
-- Ausência de informação é preenchida com zero no script atual; isso pode afetar médias e a interpretação de volumes.
-- A janela móvel usa sete registros, não necessariamente sete dias corridos quando há lacunas.
-- A ordenação temporal deve ser conferida antes de interpretar a média móvel.
-- A origem e a licença do CSV precisam de documentação complementar antes de sua redistribuição.
-- Comparações por volume absoluto não medem, por si só, cobertura vacinal ou desempenho de políticas públicas.
+## Decisões e limites
 
-## Evolução
+O SQL agora usa SQLite e é carregado pelo Python, substituindo a modelagem separada com dialeto incompatível. A construção do banco ocorre em temporário antes da substituição.
 
-Documentar a fonte, revisar os critérios de qualidade e a ordenação temporal, automatizar a carga SQL e registrar resultados reproduzíveis. Este é um exercício técnico, sem uso operacional ou recomendação de saúde pública.
+A média móvel usa as observações reportadas na janela, preservando o fato de que pode haver dias sem reporte. Ela não estima os valores ausentes. O máximo acumulado não necessariamente corresponde ao dado mais recente quando há revisões para baixo.
 
-## Contato
+Países e agregados territoriais precisam ser diferenciados antes de somar volumes. A origem e licença do CSV ainda precisam de documentação; o projeto não oferece recomendação de saúde pública.
 
-[Lucas Faraco](https://www.linkedin.com/in/lucasrfaraco) · [E-mail](mailto:lucas.rfaraco@gmail.com) · [Perfil e portfólio](https://github.com/llfaraco)
+Evolução implementada com assistência de IA. A CI confere o contrato em fixtures e, em separado, tenta a execução da base original; consulte o resultado da execução do workflow antes de declarar a validação completa.
+
+[Portfólio](https://github.com/llfaraco)

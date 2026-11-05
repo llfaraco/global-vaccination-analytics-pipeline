@@ -1,0 +1,5 @@
+__pycache__/
+.venv/
+.env
+artifacts/*.db
+artifacts/tabela_limpa_vacinacao.csv
